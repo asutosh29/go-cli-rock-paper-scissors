@@ -12,15 +12,14 @@ import (
 func StartRename(m *model, msg tea.Msg) (model, tea.Cmd) {
 	m.isEditing = true
 	m.textInput.Focus()
-	m.textInput.SetValue(m.players[m.currentPlayer].name)
+	m.textInput.SetValue(m.players[m.selectedPlayer].name)
 
-	m.message = "Editting name... press esc to exit!"
-	m.logMessages = append(m.logMessages, "Editting name")
+	m.message = "Renaming..."
 	return *m, textinput.Blink
 }
 func SubmitRename(m *model, msg tea.Msg) (model, tea.Cmd) {
 	if m.textInput.Value() != "" {
-		m.players[m.currentPlayer].name = m.textInput.Value()
+		m.players[m.selectedPlayer].name = m.textInput.Value()
 	}
 
 	m.isEditing = false
@@ -35,11 +34,11 @@ func QuitRename(m *model, msg tea.Msg) (model, tea.Cmd) {
 
 // Game actions
 func Increment(m *model, msg tea.Msg) (model, tea.Cmd) {
-	if m.players[m.currentPlayer].counter < 10 {
-		m.players[m.currentPlayer].counter++
+	if m.players[m.selectedPlayer].counter < 10 {
+		m.players[m.selectedPlayer].counter++
 		m.message = ""
 
-		logEntry := fmt.Sprintf("%s scored! Total: %d", m.players[m.currentPlayer].name, m.players[m.currentPlayer].counter)
+		logEntry := fmt.Sprintf("%s scored! Total: %d", m.players[m.selectedPlayer].name, m.players[m.selectedPlayer].counter)
 		m.logMessages = append(m.logMessages, logEntry)
 
 		m.viewPort.SetContent(strings.Join(m.logMessages, "\n"))
@@ -50,11 +49,11 @@ func Increment(m *model, msg tea.Msg) (model, tea.Cmd) {
 	return *m, nil
 }
 func Decrement(m *model, msg tea.Msg) (model, tea.Cmd) {
-	if m.players[m.currentPlayer].counter > 0 {
-		m.players[m.currentPlayer].counter--
+	if m.players[m.selectedPlayer].counter > 0 {
+		m.players[m.selectedPlayer].counter--
 		m.message = ""
 
-		logEntry := fmt.Sprintf("%s lost a point. Total: %d", m.players[m.currentPlayer].name, m.players[m.currentPlayer].counter)
+		logEntry := fmt.Sprintf("%s lost a point. Total: %d", m.players[m.selectedPlayer].name, m.players[m.selectedPlayer].counter)
 		m.logMessages = append(m.logMessages, logEntry)
 
 		m.viewPort.SetContent(strings.Join(m.logMessages, "\n"))
@@ -66,12 +65,28 @@ func Decrement(m *model, msg tea.Msg) (model, tea.Cmd) {
 }
 
 func QuitGame(m *model, msg tea.Msg) (model, tea.Cmd) {
-	m.message = "Quitting thanks for playing!"
+	m.message = "Thanks for playing!"
 	return *m, tea.Quit
 }
 
 // Timer Actions
 func UpdateTimer(m *model, msg tea.Msg) (model, tea.Cmd) {
-	m.timeLeft--
-	return *m, tick()
+	if m.timeLeft > 1 {
+		m.timeLeft--
+		// Update text based on time left
+		if m.timeLeft == 3 {
+			m.message = "ROCK!"
+		}
+		if m.timeLeft == 2 {
+			m.message = "PAPER!"
+		}
+		if m.timeLeft == 1 {
+			m.message = "SCISSORS!"
+		}
+		return *m, tick()
+	} else {
+		m.state = stateResult
+		m.determineWinner()
+		return *m, nil
+	}
 }

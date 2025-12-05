@@ -8,57 +8,114 @@ import (
 
 func (m model) View() string {
 
-	label := labelStyle.Render("=== Counter Game ===")
-
-	timerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("205")) // Pink
-	if m.timeLeft < 5 {
-		timerStyle = timerStyle.Foreground(lipgloss.Color("#FF0000")).Bold(true)
-	}
-	timerView := timerStyle.Render(fmt.Sprintf("Time Left: %ds", m.timeLeft))
-
-	playersRow := []string{}
-	for i, player := range m.players {
-		name := labelStyle.Render(player.name)
-		counter := counterStyle.Render(fmt.Sprintf("Score: %d", player.counter))
-
-		container := lipgloss.JoinVertical(lipgloss.Center, name, counter)
-		if m.currentPlayer == i {
-			container = selectedContainerStyle.Render(container)
-		} else {
-			container = containerStyle.Render(container)
-		}
-		playersRow = append(playersRow, container)
-	}
-	playersRowString := lipgloss.JoinHorizontal(lipgloss.Center, playersRow...)
-
+	// GAME UI
+	header := labelStyle.Render("=== ROCK PAPER SCISSORS ARENA ===")
 	var footer string
-	if m.isEditing {
-		footer = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(secondaryColor)).
-			Padding(0, 1).
-			Render(m.textInput.View())
-	} else {
-		footer = helpStyle.Render("• Press up/down or j/k to increase/decrease the counter \n• Press 'e' to rename \n• Tab to switch")
+	var help string
+	help = helpStyle.Render("• Press 'q' to exit \n• Press 'e' to rename \n• Press 'tab' to switch")
+
+	// PLAYERS INFO
+	playerViews := []string{}
+	for i, player := range m.players {
+		var moveName move
+		var controlHints string
+
+		var moveDisplay string
+		if i == 0 {
+			moveName = m.players[0].move
+			controlHints = "• A(Rock) \n• S(Paper) \n• D(Scissors)"
+		} else {
+			moveName = m.players[1].move
+			controlHints = "• J(Rock) \n• K(Paper) \n• L(Scissors)"
+		}
+
+		switch m.state {
+		case stateLobby:
+			moveDisplay = "Waiting..."
+			// RENAME BAR
+			if m.isEditing {
+				footer = footerStyle.Render(m.textInput.View())
+				help = helpStyle.Render("• Press 'esc' to exit \n• Press 'enter' to accept ")
+			} else {
+				help = helpStyle.Render("• Press 'q' to exit \n• Press 'e' to rename \n• Press 'tab' to switch")
+			}
+		case stateCountdown:
+			if moveName != moveNone {
+				// If they picked something, show they are ready
+				moveDisplay = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(primaryColor)).
+					Bold(true).
+					Render("Selected")
+			} else {
+				moveDisplay = "Thinking..."
+			}
+			help = helpStyle.Render("• Press 'q' to exit")
+		case stateResult:
+			// Show moves
+			moveDisplay = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(secondaryColor)).
+				Bold(true).
+				Render(moveName.String())
+			help = helpStyle.Render("• Press 'q' to exit\n• Press 'space' or 'enter' to go the Lobby!")
+		}
+		name := labelStyle.Render(player.name)
+		score := counterStyle.Render(fmt.Sprintf("Score: %d", player.wins))
+
+		innerBox := lipgloss.JoinVertical(lipgloss.Center, name, score, "\n", moveDisplay)
+		playerBox := ""
+		if i == m.selectedPlayer {
+			playerBox = playerBoxStyle.BorderForeground(lipgloss.Color(primaryColor)).Render(innerBox)
+		} else {
+			playerBox = playerBoxStyle.Render(innerBox)
+
+		}
+
+		hint := helpStyle.Render(controlHints)
+		fullColumn := lipgloss.JoinVertical(lipgloss.Center, playerBox, hint)
+		playerViews = append(playerViews, fullColumn)
 	}
 
-	logString := ""
-	for _, log := range m.logMessages {
-		logString += log + "\n"
-	}
-	m.viewPort.SetContent(messageStyle.Render(logString + "\n" + m.message))
+	gameMessage := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFF7DB")).
+		Background(lipgloss.Color("#D3869B")).
+		Padding(1, 6).
+		Bold(true).
+		Margin(1).
+		Render(m.message)
+
+	playersDisplay := lipgloss.JoinHorizontal(lipgloss.Center, playerViews...)
+
 	logView := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(subtleColor)).
+		MarginTop(1).
 		Padding(0, 1).
 		Render(m.viewPort.View())
 
-	ui := lipgloss.JoinVertical(lipgloss.Center, label, timerView, playersRowString, footer, logView)
+	var ui string
+	// FINAL UI RENDER
+	if footer != "" {
+		ui = lipgloss.JoinVertical(lipgloss.Center,
+			header,
+			gameMessage,
+			playersDisplay,
+			logView,
+			footer,
+			help,
+		)
+	} else {
+		ui = lipgloss.JoinVertical(lipgloss.Center,
+			header,
+			gameMessage,
+			playersDisplay,
+			logView,
+			help,
+		)
+	}
 
-	container := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()). // Nice rounded corners
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(primaryColor)).
-		Padding(1, 2). // Add breathing room inside the border
+		Padding(0, 2).
 		Render(ui)
-	return container
 }
