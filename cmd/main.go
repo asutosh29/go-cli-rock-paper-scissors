@@ -5,51 +5,9 @@ import (
 	"log"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-)
-
-// Styles
-const (
-	primaryColor   = "#B8BB26"   // A nice lime green
-	secondaryColor = "#D3869B"   // A soft purple
-	subtleColor    = "#504945"   // Dark grey
-	dangerColor    = "#cc4949ff" //Danger color
-)
-
-var (
-	// Style for the "Current Count" label
-	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(secondaryColor)).
-			Bold(true).
-			MarginBottom(1) // Add space below the label
-
-	// Style for the actual number
-	counterStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(primaryColor)).
-			Background(lipgloss.Color(subtleColor)).
-			Padding(1, 3). // Top/Bottom: 1, Left/Right: 3
-			Align(lipgloss.Center).
-			Bold(true)
-
-	// Style for the help text at the bottom
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")). // ANSI 256 color code for grey
-			Italic(true).
-			MarginTop(2) // Add space above the help text
-
-	// Style for the help text at the bottom
-	messageStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(dangerColor)). // ANSI 256 color code for grey
-			Italic(true).
-			MarginTop(2) // Add space above the help text
-
-	selectedContainerStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color(primaryColor))
-	containerStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("240"))
 )
 
 type player struct {
@@ -64,6 +22,8 @@ type model struct {
 
 	textInput textinput.Model
 	isEditing bool
+
+	viewPort viewport.Model
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -73,6 +33,8 @@ func initialModel() model {
 	ti.Placeholder = "Enter new name"
 	ti.CharLimit = 20
 	ti.Width = 30
+
+	vp := viewport.New(30, 3)
 
 	return model{
 		players: []player{
@@ -85,6 +47,8 @@ func initialModel() model {
 		},
 		textInput: ti,
 		isEditing: false,
+
+		viewPort: vp,
 	}
 }
 
@@ -118,11 +82,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
+			m.message = "Quitting thanks for playing!"
 			return m, tea.Quit
 		case "e":
 			m.isEditing = true
 			m.textInput.Focus()
 			m.textInput.SetValue(m.players[m.currentPlayer].name)
+
+			m.message = "Editting name... press esc to exit!"
 			return m, textinput.Blink
 
 		case "up", "j":
@@ -166,18 +133,18 @@ func (m model) View() string {
 
 	var footer string
 	if m.isEditing {
-		// Render the bubble component
 		footer = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(secondaryColor)).
 			Padding(0, 1).
 			Render(m.textInput.View())
 	} else {
-		// Render your old message/help text
-		footer = messageStyle.Render(m.message) + "\n" + helpStyle.Render("• Press up/down or j/k to increase/decrease the counter \n• Press 'e' to rename \n• Tab to switch")
+		footer = helpStyle.Render("• Press up/down or j/k to increase/decrease the counter \n• Press 'e' to rename \n• Tab to switch")
 	}
 
-	ui := lipgloss.JoinVertical(lipgloss.Center, label, playersRowString, footer)
+	m.viewPort.SetContent(messageStyle.Render(m.message))
+	viewPortText := m.viewPort.View()
+	ui := lipgloss.JoinVertical(lipgloss.Center, label, playersRowString, footer, viewPortText)
 
 	container := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()). // Nice rounded corners
