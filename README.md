@@ -1,3 +1,5 @@
-# Counter Game
+# CLI Rock Paper Scissors
 
-Simple 2 Player Counting Game using golang, bubbletea and lipgloss
+Wanna take a break from coding?
+
+Play Rocker paper scissors in your Terminal!
